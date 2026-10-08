@@ -3,6 +3,17 @@
   const BUCKET = 'temple-media', MAX_IMAGE = 5 * 1024 * 1024, STATE_TTL = 60000, SIGN_TTL = 3600;
   const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
   const adminPage = /(?:^|\/)admin(?:\/|$)/.test(window.location.pathname);
+  const assetBase = (() => {
+    // This script sits in the site's base directory on both root and project Pages.
+    // Admin loads it with ../supabase-service.js, so its own URL is authoritative.
+    for (const script of window.document?.querySelectorAll?.('script[src]') || []) {
+      try {
+        const url = new URL(script.src || script.getAttribute('src'), window.document.baseURI || window.location.href);
+        if (url.pathname.endsWith('/supabase-service.js')) return new URL('.', url);
+      } catch { /* Ignore unrelated script URLs. */ }
+    }
+    return new URL('/', window.location.href);
+  })();
   const clone = value => JSON.parse(JSON.stringify(value));
   const assets = new Map();
   let clients, statePromise = null, stateExpires = 0, cacheGeneration = 0;
@@ -67,7 +78,7 @@
       const item = assets.get(reference);
       return item && item.expires > Date.now() ? item.url : '';
     }
-    if (/^\/?assets\/[a-zA-Z0-9._/-]+$/.test(reference) && !reference.includes('..')) return new URL('/' + reference.replace(/^\//, ''), window.location.href).href;
+    if (/^\/?assets\/[a-zA-Z0-9._/-]+$/.test(reference) && !reference.includes('..')) return new URL(reference.replace(/^\//, ''), assetBase).href;
     try { const url = new URL(reference); if (url.protocol === 'https:' && !url.username && !url.password) return url.href; } catch {}
     return '';
   }
