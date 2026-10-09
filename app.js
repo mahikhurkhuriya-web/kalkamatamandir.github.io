@@ -59,7 +59,7 @@
   const updateTitle = () => {
     const base = localized(window.TEMPLE_CMS_SETTINGS?.branding.pageTitle, 'श्री कालका माता मंदिर · खुड़खुड़ा कलां, नागौर');
     const tab = tabs.find(tab => tab.getAttribute('aria-controls') === activePanel);
-    document.title = activePanel === 'home' ? base : tab.textContent.trim() + ' · ' + base;
+    document.title = activePanel === 'home' ? base : (tab?.textContent.trim() || (activePanel === 'library' ? (language === 'en' ? 'Library' : 'पुस्तकालय') : '')) + ' · ' + base;
   };
   const activateTab = (id, { historyMode = 'none', focusPanel = false, scroll = true } = {}) => {
     if (!panels.some(panel => panel.id === id)) id = 'home';

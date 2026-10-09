@@ -271,6 +271,14 @@
   }
   async function api(path, options = {}) {
     const method = String(options.method || 'GET').toUpperCase();
+    if (path === '/api/extras' && method === 'GET') return rpc(initialize().publicClient, 'temple_public_extras');
+    if (path === '/api/admin/extras' && method === 'GET') return rpc(privateClient(), 'temple_admin_extras');
+    if (path === '/api/admin/extras' && method === 'POST') {
+      const input = bodyJSON(options, 3 * 1024 * 1024);
+      if (!input.data || typeof input.data !== 'object' || Array.isArray(input.data) || !uuid(input.baseVersion))
+        invalid('प्रकाशित जानकारी फिर लोड करके बदलाव करें।');
+      return rpc(privateClient(), 'temple_save_extras', {p_data: input.data, p_base_version: input.baseVersion});
+    }
     if (method === 'GET' && ['/api/settings','/api/donations','/api/gallery'].includes(path)) {
       const state = await readPublicState();
       if (path === '/api/settings') return clone({settings: state.settings, version: state.version});

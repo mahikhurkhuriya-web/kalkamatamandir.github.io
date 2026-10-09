@@ -65,7 +65,7 @@
     }
     const whatsapp=document.querySelector('[data-whatsapp] span');if(whatsapp)whatsapp.textContent=locale(settings.whatsapp.buttonLabel);
     document.querySelector('meta[name="description"]').content=locale(settings.branding.metaDescription);
-    const selected=document.querySelector('#main-nav [aria-selected="true"]');document.title=(selected?.getAttribute('aria-controls')==='home'?'':(selected?.textContent.trim()||'')+' · ')+locale(settings.branding.pageTitle);
+    const selected=document.querySelector('#main-nav [aria-selected="true"]');const libraryOpen=!document.getElementById('library').hidden;document.title=libraryOpen?(document.getElementById('library-title').textContent+' · '+locale(settings.branding.pageTitle)):(selected?.getAttribute('aria-controls')==='home'?'':(selected?.textContent.trim()||'')+' · ')+locale(settings.branding.pageTitle);
     if(!payment.showPopupOnOpen&&document.getElementById('donation-dialog').open)document.getElementById('donation-dialog').close();
   }
   window.applyTempleSettings=value=>{settings=cms.validateSettings(value);window.templeCmsLoadState='loaded';notice();window.TEMPLE_CMS_SETTINGS=settings;config();if(window.refreshTempleUi)window.refreshTempleUi();render();};

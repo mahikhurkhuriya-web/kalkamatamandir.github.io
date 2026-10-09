@@ -49,6 +49,7 @@ window.TEMPLE_TRANSLATIONS = {
   "नवरात्रि महोत्सव": "Navratri Festival",
   "नवरात्रि विशेष": "Navratri Special",
   "पंचांग": "Panchang",
+  "पुस्तकालय": "Library",
   "पधारें माता के धाम": "Visit Mata's Sacred Abode",
   "परिसर में शुद्ध और ठंडे पेयजल की व्यवस्था।": "Clean, cool drinking water is available on the premises.",
   "पर्व एवं आयोजन": "Festivals & Events",
