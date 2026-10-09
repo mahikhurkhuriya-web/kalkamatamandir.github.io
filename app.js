@@ -4,7 +4,7 @@
   const dictionary = window.TEMPLE_TRANSLATIONS || {};
   const nav = document.getElementById('main-nav');
   const tabs = [...nav.querySelectorAll('[role="tab"]')];
-  const panels = [...document.querySelectorAll('main > [role="tabpanel"]')];
+  const panels = [...document.querySelectorAll('main > [role="tabpanel"], main > #library')];
   const staticTexts = [], staticAttributes = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
@@ -66,7 +66,7 @@
     activePanel = id;
     panels.forEach(panel => { panel.hidden = panel.id !== id; });
     tabs.forEach(tab => {
-      const selected = tab.getAttribute('aria-controls') === id;
+      const selected = tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id);
       tab.setAttribute('aria-selected', String(selected));
       tab.tabIndex = selected ? 0 : -1;
       tab.classList.toggle('active', selected);
@@ -74,7 +74,7 @@
     if (historyMode !== 'none' && location.hash !== '#' + id) {
       try { history[historyMode === 'push' ? 'pushState' : 'replaceState'](null, '', '#' + id); } catch { location.hash = id; }
     }
-    const currentTab = tabs.find(tab => tab.getAttribute('aria-controls') === id);
+    const currentTab = tabs.find(tab => tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id));
     if (currentTab && typeof currentTab.scrollIntoView === 'function') currentTab.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
     if (scroll) window.scrollTo({ top: 0, behavior: 'instant' });
     if (focusPanel) document.getElementById(id).focus({ preventScroll: true });
