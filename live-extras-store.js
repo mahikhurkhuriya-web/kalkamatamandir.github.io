@@ -3,10 +3,11 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   const builtIn = [
     {id: 'temple-darshan', title: {hi: 'मंदिर दर्शन', en: 'Temple Darshan'}, date: ''},
-    {id: 'meetings', title: {hi: 'बैठकें', en: 'Meetings'}, date: ''},
-    {id: 'special-events', title: {hi: 'विशेष कार्यक्रम', en: 'Special Events'}, date: ''}
+    {id: 'meetings', title: {hi: 'गौशाला', en: 'Gaushala'}, date: ''},
+    {id: 'special-events', title: {hi: 'विशेष कार्यक्रम', en: 'Special Events'}, date: ''},
+    {id: 'gau-bhakt', title: {hi: 'गौ भक्त फोटो गैलरी', en: 'Gau Bhakt Photo Gallery'}, date: ''}
   ];
-  let state = {donations: [], expenses: [], gallery: [], albums: builtIn, library: {sample: false}};
+  let state = {donations: [], expenses: [], gallery: [], albums: builtIn, library: {sample: false}, gaushalaDetails: null};
   let pending = null, lastLoaded = 0;
   const listeners = new Set();
   const notify = () => { for (const callback of listeners) callback(clone(state)); };
@@ -29,6 +30,7 @@
           expenses: extras.data.expenses,
           albums: extras.data.albums,
           library: {...extras.data.library, sample: false},
+          gaushalaDetails: extras.data.gaushalaDetails || null,
           gallery: gallery.photos.map(photo => ({...photo, albumId: selected[photo.id] || 'temple-darshan'}))
         };
         lastLoaded = Date.now();

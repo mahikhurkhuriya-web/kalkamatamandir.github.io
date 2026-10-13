@@ -4,7 +4,7 @@
   const api = (route, options) => window.TempleBackend.api(route, options);
   const clone = value => JSON.parse(JSON.stringify(value));
   const money = paise => new Intl.NumberFormat('hi-IN', {style: 'currency', currency: 'INR', maximumFractionDigits: 2}).format(paise / 100);
-  let snapshot = null, gallery = [], staged = null, stagedVersion = null, working = false;
+  let snapshot = null, gallery = [], staged = null, stagedVersion = null, working = false, expensePage = 0;
   const say = (id, message) => { $(id).textContent = message; };
   const row = (...values) => {
     const tr = document.createElement('tr');
@@ -39,8 +39,31 @@
   }
   function renderExpenses() {
     const expenses = snapshot.data.expenses.slice().sort((a,b) => b.date.localeCompare(a.date));
-    say('expense-count', `${expenses.length} प्रविष्टियाँ · कुल ${money(expenses.reduce((total,item) => total + item.amountPaise,0))}`);
-    $('expense-rows').replaceChildren(...expenses.slice(0,30).map(item => row(item.date,item.description,money(item.amountPaise))));
+    const from = $('expense-from').value, to = $('expense-to').value, query = $('expense-search').value.trim().toLowerCase();
+    const filtered = expenses.filter(item => (!from || item.date >= from) && (!to || item.date <= to) && (!query || item.description.toLowerCase().includes(query)));
+    const pages = Math.max(1,Math.ceil(filtered.length/10));
+    expensePage = Math.min(Math.max(expensePage,0),pages-1);
+    const total = filtered.reduce((sum,item) => sum + item.amountPaise,0);
+    say('expense-count', `${filtered.length} प्रविष्टियाँ · कुल ${money(total)}${filtered.length !== expenses.length ? ` (सभी ${expenses.length} में से)` : ''}`);
+    const visible = filtered.slice(expensePage*10,(expensePage+1)*10);
+    $('expense-rows').replaceChildren(...visible.map(item => {
+      const tr = row(item.date,item.description,money(item.amountPaise));
+      const cell = document.createElement('td'), button = document.createElement('button');
+      button.type = 'button'; button.className = 'danger'; button.textContent = 'हटाएँ';
+      button.setAttribute('aria-label', `${item.date} · ${item.description} · ${money(item.amountPaise)} की खर्च प्रविष्टि हटाएँ`);
+      button.addEventListener('click', () => run('expense-message',async () => {
+        if (!window.confirm(`${item.date} · ${item.description} · ${money(item.amountPaise)}\n\nयह खर्च वेबसाइट की प्रकाशित सूची से हट जाएगा। हटाएँ?`)) return;
+        const data = clone(snapshot.data);
+        if (!data.expenses.some(entry => entry.id === item.id)) throw new Error('यह प्रविष्टि अब सूची में नहीं है। पेज रीलोड करें।');
+        data.expenses = data.expenses.filter(entry => entry.id !== item.id);
+        await save(data);
+        say('expense-message','खर्च की प्रविष्टि वेबसाइट से हटा दी गई।');
+      }));
+      cell.append(button); tr.append(cell); return tr;
+    }));
+    say('expense-page', `${expensePage+1} / ${pages}`);
+    $('expense-prev').disabled = expensePage === 0;
+    $('expense-next').disabled = expensePage+1 >= pages;
   }
   function albumOptions(selected = '') {
     const options = snapshot.data.albums.map(album => {
@@ -78,11 +101,16 @@
     for (const key of ['totalSeats','allocatedSeats','waiting']) $('library-'+key).value = library[key] == null ? '' : String(library[key]);
     updateFree();
   }
+  function renderGaushala() {
+    const details = snapshot.data.gaushalaDetails || {};
+    for (const name of ['notice','lapsi','fodder'])
+      for (const lang of ['hi','en']) $('gaushala-'+name+'-'+lang).value = details[name]?.[lang] || '';
+  }
   function updateFree() {
     const total = $('library-totalSeats').value, allocated = $('library-allocatedSeats').value;
     $('library-free').textContent = total === '' || allocated === '' ? '—' : String(Math.max(0,Number(total)-Number(allocated)));
   }
-  function render() { if (!snapshot) return; renderExpenses(); renderPhotos(); renderLibrary(); }
+  function render() { if (!snapshot) return; renderExpenses(); renderPhotos(); renderLibrary(); renderGaushala(); }
   function sheetDate(raw, book) {
     if (raw instanceof Date && Number.isFinite(raw.getTime())) return raw.toISOString().slice(0,10);
     if (typeof raw === 'number') {
@@ -99,6 +127,7 @@
   }
   async function readSheet(file) {
     if (!file || file.size > 5*1024*1024 || !/\.(?:xlsx|xls|csv)$/i.test(file.name)) throw new Error('5 MB तक की Excel या CSV फ़ाइल चुनें।');
+    await window.ensureTempleXLSX();
     const book = window.XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});
     const sheet = book.Sheets[book.SheetNames[0]], rows = window.XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
     if (rows.length < 2 || rows.length > 2001) throw new Error('शीट में 1 से 2000 तक खर्च की पंक्तियाँ रखें।');
@@ -138,6 +167,25 @@
     await save(data); staged=null; $('expense-file').value=''; $('expense-stage').hidden=true;
     say('expense-message',`${added} नई प्रविष्टियाँ प्रकाशित हो गईं।`);
   }));
+  $('expense-manual-date').value = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  $('expense-manual').addEventListener('submit',event => {event.preventDefault();run('expense-message',async () => {
+    if (!snapshot) await load();
+    const date=$('expense-manual-date').value, description=$('expense-manual-hi').value.trim(),
+      descriptionEn=$('expense-manual-en').value.trim(), amount=Number($('expense-manual-amount').value),amountPaise=Math.round(amount*100);
+    if (!validDate(date) || description.length<2 || description.length>300 || descriptionEn.length<2 || descriptionEn.length>300
+      || !Number.isFinite(amount) || amount<=0 || !Number.isSafeInteger(amountPaise) || Math.abs(amountPaise/100-amount)>0.00001
+      || amountPaise>100000000000) throw new Error('तारीख़, हिन्दी व English विवरण और राशि सही भरें।');
+    const data=clone(snapshot.data);
+    if (data.expenses.length>=2000) throw new Error('कुल खर्च की अधिकतम 2000 प्रविष्टियाँ रख सकते हैं।');
+    data.expenses.push({id:crypto.randomUUID(),date,description,descriptionEn,amountPaise});
+    await save(data);$('expense-manual').reset();
+    $('expense-manual-date').value=date;
+    say('expense-message','खर्च की नई प्रविष्टि वेबसाइट पर प्रकाशित हो गई।');
+  });});
+  for (const id of ['expense-from','expense-to','expense-search']) $(id).addEventListener('input',() => {expensePage=0;if (snapshot) renderExpenses();});
+  $('expense-clear').addEventListener('click',() => {for (const id of ['expense-from','expense-to','expense-search']) $(id).value='';expensePage=0;if (snapshot) renderExpenses();});
+  $('expense-prev').addEventListener('click',() => {expensePage--;if (snapshot) renderExpenses();});
+  $('expense-next').addEventListener('click',() => {expensePage++;if (snapshot) renderExpenses();});
   $('album-form').addEventListener('submit',event => {event.preventDefault();run('photo-progress',async () => {
     if (!snapshot) await load();
     const hi=$('album-hi').value.trim(),en=$('album-en').value.trim();
@@ -172,6 +220,20 @@
     $('photo-form').reset(); say('photo-progress',`${ids.length} फोटो ${snapshot.data.albums.find(item => item.id===album)?.title.hi || 'एल्बम'} में प्रकाशित हो गईं।`);
   });});
   $('library-form').addEventListener('input',updateFree);
+  $('gaushala-form').addEventListener('submit',event => {event.preventDefault();run('gaushala-message',async () => {
+    if (!snapshot) await load();
+    const data=clone(snapshot.data), details={};
+    for (const name of ['notice','lapsi','fodder']) {
+      details[name]={};
+      for (const lang of ['hi','en']) {
+        const value=$('gaushala-'+name+'-'+lang).value.trim();
+        if (value.length<20 || value.length>3000) throw new Error('गौशाला की हिन्दी और English जानकारी पूरी भरें।');
+        details[name][lang]=value;
+      }
+    }
+    data.gaushalaDetails=details;
+    await save(data);say('gaushala-message','गौशाला की विस्तृत जानकारी प्रकाशित हो गई।');
+  });});
   $('library-form').addEventListener('submit',event => {event.preventDefault();run('photo-progress',async () => {
     if (!snapshot) await load();
     const data=clone(snapshot.data),library=data.library;
@@ -187,7 +249,7 @@
       throw new Error('कुल और आवंटित सीटें साथ भरें; आवंटित सीटें कुल से अधिक नहीं हो सकतीं।');
     await save(data); document.getElementById('admin-status').textContent='पुस्तकालय की जानकारी प्रकाशित हो गई।';
   });});
-  document.querySelectorAll('#admin-nav button[data-page="expenses"],#admin-nav button[data-page="albums"],#admin-nav button[data-page="library"]').forEach(button =>
+  document.querySelectorAll('#admin-nav button[data-page="expenses"],#admin-nav button[data-page="gallery"],#admin-nav button[data-page="library"],#admin-nav button[data-page="people"]').forEach(button =>
     button.addEventListener('click',() => run('photo-progress',load)));
   document.getElementById('reload').addEventListener('click',() => {if (!document.getElementById('admin-app').hidden) load().catch(() => {});});
 })();

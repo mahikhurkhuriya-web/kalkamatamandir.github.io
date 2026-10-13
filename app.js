@@ -4,7 +4,7 @@
   const dictionary = window.TEMPLE_TRANSLATIONS || {};
   const nav = document.getElementById('main-nav');
   const tabs = [...nav.querySelectorAll('[role="tab"]')];
-  const panels = [...document.querySelectorAll('main > [role="tabpanel"], main > #library')];
+  const panels = [...document.querySelectorAll('main > [role="tabpanel"], main > #library, main > #gaushala-details')];
   const staticTexts = [], staticAttributes = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
@@ -59,14 +59,14 @@
   const updateTitle = () => {
     const base = localized(window.TEMPLE_CMS_SETTINGS?.branding.pageTitle, 'श्री कालका माता मंदिर · खुड़खुड़ा कलां, नागौर');
     const tab = tabs.find(tab => tab.getAttribute('aria-controls') === activePanel);
-    document.title = activePanel === 'home' ? base : (tab?.textContent.trim() || (activePanel === 'library' ? (language === 'en' ? 'Library' : 'पुस्तकालय') : '')) + ' · ' + base;
+    document.title = activePanel === 'home' ? base : (tab?.textContent.trim() || (activePanel === 'library' ? (language === 'en' ? 'Library' : 'पुस्तकालय') : activePanel === 'gaushala-details' ? (language === 'en' ? 'Gaushala' : 'गौशाला') : '')) + ' · ' + base;
   };
   const activateTab = (id, { historyMode = 'none', focusPanel = false, scroll = true } = {}) => {
     if (!panels.some(panel => panel.id === id)) id = 'home';
     activePanel = id;
     panels.forEach(panel => { panel.hidden = panel.id !== id; });
     tabs.forEach(tab => {
-      const selected = tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id);
+      const selected = tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id === 'gaushala-details' ? 'gaushala' : id);
       tab.setAttribute('aria-selected', String(selected));
       tab.tabIndex = selected ? 0 : -1;
       tab.classList.toggle('active', selected);
@@ -74,7 +74,7 @@
     if (historyMode !== 'none' && location.hash !== '#' + id) {
       try { history[historyMode === 'push' ? 'pushState' : 'replaceState'](null, '', '#' + id); } catch { location.hash = id; }
     }
-    const currentTab = tabs.find(tab => tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id));
+    const currentTab = tabs.find(tab => tab.getAttribute('aria-controls') === (id === 'library' ? 'facilities' : id === 'gaushala-details' ? 'gaushala' : id));
     if (currentTab && typeof currentTab.scrollIntoView === 'function') currentTab.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
     if (scroll) window.scrollTo({ top: 0, behavior: 'instant' });
     if (focusPanel) document.getElementById(id).focus({ preventScroll: true });

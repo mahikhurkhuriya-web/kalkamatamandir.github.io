@@ -3,7 +3,7 @@
   const words = {
     galleryEyebrow: ['माता के दरबार की झलकियाँ', 'Glimpses of temple life'],
     galleryTitle: ['फोटो गैलरी', 'Photo gallery'],
-    galleryIntro: ['मंदिर दर्शन, बैठकों और विशेष आयोजनों की तस्वीरें अलग-अलग एल्बम में देखें।', 'Explore temple darshan, meetings and special events in their own albums.'],
+    galleryIntro: ['मंदिर दर्शन, गौशाला, गौ भक्तों और विशेष आयोजनों की तस्वीरें अलग-अलग एल्बम में देखें।', 'Explore temple darshan, Gaushala, devotees and special events in their own albums.'],
     albums: ['एल्बम', 'albums'], photos: ['तस्वीरें', 'photos'], photo: ['तस्वीर', 'photo'],
     openAlbum: ['एल्बम देखें', 'View album'], backAlbums: ['सभी एल्बम', 'All albums'],
     albumEmptyTitle: ['इस एल्बम की तस्वीरें जल्द साझा की जाएँगी', 'Photos will be added to this album soon'],
@@ -11,7 +11,7 @@
     awaitingPhotos: ['तस्वीरें प्रतीक्षित', 'Photos coming soon'], viewPhoto: ['फोटो देखें', 'View photo'],
     photoUnavailable: ['यह तस्वीर अभी दिखाई नहीं जा सकी', 'This photo could not be displayed'],
     photoTitle: ['मंदिर की तस्वीर', 'Temple photo'], otherAlbum: ['अन्य तस्वीरें', 'More photos'],
-    templeDarshan: ['मंदिर दर्शन', 'Temple darshan'], meetings: ['बैठकें', 'Meetings'], specialEvents: ['विशेष आयोजन', 'Special events'],
+    templeDarshan: ['मंदिर दर्शन', 'Temple darshan'], meetings: ['गौशाला', 'Gaushala'], specialEvents: ['विशेष आयोजन', 'Special events'], gauBhakt: ['गौ भक्त फोटो गैलरी', 'Gau Bhakt Photo Gallery'],
     backFacilities: ['सुविधाओं पर वापस जाएँ', 'Back to facilities'],
     libraryEyebrow: ['शिक्षा की ओर एक कदम', 'A place to learn and grow'],
     libraryTitle: ['निःशुल्क पुस्तकालय', 'Free library'],
@@ -68,7 +68,8 @@
     const builtIn = [
       { id: 'temple-darshan', title: { hi: words.templeDarshan[0], en: words.templeDarshan[1] } },
       { id: 'meetings', title: { hi: words.meetings[0], en: words.meetings[1] } },
-      { id: 'special-events', title: { hi: words.specialEvents[0], en: words.specialEvents[1] } }
+      { id: 'special-events', title: { hi: words.specialEvents[0], en: words.specialEvents[1] } },
+      { id: 'gau-bhakt', title: { hi: words.gauBhakt[0], en: words.gauBhakt[1] } }
     ];
     const byId = new Map(builtIn.map(album => [album.id, album]));
     for (const album of state().albums || []) if (album?.id) byId.set(album.id, { ...byId.get(album.id), ...album });

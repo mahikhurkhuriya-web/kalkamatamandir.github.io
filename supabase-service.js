@@ -126,16 +126,16 @@
     if (!value || (value.version !== null && !uuid(value.version))) throw new ApiError('प्रकाशित विवरण का संस्करण सही नहीं है।', 503);
     return {...value, settings: checked(() => cms.validateSettings(value.settings)), records: checked(() => ledger.validateRecords(value.records)), gallery: validGallery(value.gallery)};
   }
-  async function prepareState(client, value) {
+  async function prepareState(client, value, includeGallery = true) {
     const state = validState(value);
-    await signAssets(client, [...state.gallery.map(photo => galleryReference(photo.id)), state.settings.hero.imageUrl, state.settings.payments.qrImage]);
+    await signAssets(client, [...(includeGallery ? state.gallery.map(photo => galleryReference(photo.id)) : []), state.settings.hero.imageUrl, state.settings.payments.qrImage]);
     return state;
   }
   async function readPublicState() {
     if (!statePromise || stateExpires <= Date.now()) {
       const generation = cacheGeneration;
       const pending = (async () => {
-        const client = initialize().publicClient, state = await prepareState(client, await rpc(client, 'temple_public_state'));
+        const client = initialize().publicClient, state = await prepareState(client, await rpc(client, 'temple_public_state'), false);
         if (generation !== cacheGeneration) return readPublicState();
         return state;
       })();
@@ -283,16 +283,23 @@
       const state = await readPublicState();
       if (path === '/api/settings') return clone({settings: state.settings, version: state.version});
       if (path === '/api/donations') return clone({records: state.records, version: state.version, updatedAt: state.updatedAt});
+      await signAssets(initialize().publicClient, state.gallery.map(photo => galleryReference(photo.id)));
       return {photos: state.gallery.map(photo => ({...clone(photo), url: imageUrl(galleryReference(photo.id))})), version: state.version};
     }
     if (path === '/api/session' && method === 'GET') return rpc(adminPage ? privateClient() : initialize().publicClient, 'temple_session');
     if (path === '/api/admin/bootstrap' && method === 'GET') return prepareState(privateClient(), await rpc(privateClient(), 'temple_admin_bootstrap'));
     if (path === '/api/admin/backup' && method === 'GET') return rpc(privateClient(), 'temple_admin_backup');
+    const historyPage = /^\/api\/admin\/history\/(0|[1-9][0-9]{0,5})$/.exec(path);
+    if (historyPage && method === 'GET') return rpc(privateClient(), 'temple_admin_history', {p_offset:Number(historyPage[1])});
     if (path === '/api/admin/users' && method === 'GET') return rpc(privateClient(), 'temple_admin_users');
     if (path === '/api/admin/users' && method === 'POST') {
       const input = bodyJSON(options, 8192), email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : '';
+      const keys=['gallery','donations','expenses','library','content','events','people','settings'];
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof input.active !== 'boolean') invalid('सही admin email भरें।');
-      return rpc(privateClient(), 'temple_admin_users', {p_email: email, p_active: input.active});
+      if (!input.permissions || typeof input.permissions !== 'object' || Array.isArray(input.permissions)
+        || Object.entries(input.permissions).some(([key,value]) => !keys.includes(key) || typeof value !== 'boolean')
+        || (input.active && !keys.some(key => input.permissions[key] === true))) invalid('Sub-admin को कम से कम एक सही अनुमति दें।');
+      return rpc(privateClient(), 'temple_admin_users', {p_email: email, p_active: input.active, p_permissions:input.permissions});
     }
     if (path === '/api/admin/media' && method === 'POST') return upload(path, options, false);
     if (path === '/api/gallery' && method === 'POST') return upload(path, options, true);
